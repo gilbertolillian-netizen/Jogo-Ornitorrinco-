@@ -24,6 +24,13 @@ jobs:
         run: sed -i 's/android:name=".MainActivity"/android:name=".MainActivity" android:screenOrientation="sensorLandscape"/' android/app/src/main/AndroidManifest.xml
       - name: Gerar ícones
         run: npx capacitor-assets generate --android --iconBackgroundColor '#7ec8f0' --iconBackgroundColorDark '#7ec8f0'
+      - name: Garantir fundo do ícone
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq imagemagick
+          for d in android/app/src/main/res/mipmap-*dpi; do
+            [ -f "$d/ic_launcher_background.png" ] || convert -size 432x432 xc:'#7ec8f0' "$d/ic_launcher_background.png"
+          done
+          ls android/app/src/main/res/mipmap-xxxhdpi
       - run: npx cap sync android
       - run: cd android && chmod +x gradlew && ./gradlew assembleDebug
       - name: Montar site
