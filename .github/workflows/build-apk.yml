@@ -1,7 +1,11 @@
-name: Build APK
+name: Build APK e Site
 on:
   push:
   workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -18,9 +22,30 @@ jobs:
       - run: npx cap add android
       - name: Forçar modo paisagem
         run: sed -i 's/android:name=".MainActivity"/android:name=".MainActivity" android:screenOrientation="sensorLandscape"/' android/app/src/main/AndroidManifest.xml
+      - name: Gerar ícones
+        run: npx capacitor-assets generate --android --iconBackgroundColor '#7ec8f0' --iconBackgroundColorDark '#7ec8f0'
       - run: npx cap sync android
       - run: cd android && chmod +x gradlew && ./gradlew assembleDebug
+      - name: Montar site
+        run: |
+          mkdir site
+          cp landing/index.html site/index.html
+          cp assets/icon-only.png site/icon.png
+          cp www/index.html site/jogar.html
+          cp android/app/build/outputs/apk/debug/app-debug.apk site/ornitorrinco-troll.apk
       - uses: actions/upload-artifact@v4
         with:
           name: ornitorrinco-troll-apk
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          path: site/ornitorrinco-troll.apk
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.d.outputs.page_url }}
+    steps:
+      - id: d
+        uses: actions/deploy-pages@v4
