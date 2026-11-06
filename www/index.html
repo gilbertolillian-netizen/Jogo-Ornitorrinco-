@@ -35,7 +35,9 @@ function rs(){const h=document.getElementById('ctl').offsetHeight+(parseFloat(ge
  const s=Math.min(innerWidth/W,(innerHeight-h)/H);c.style.width=W*s+'px';c.style.height=H*s+'px'}
 addEventListener('resize',rs);rs();
 
-let P,Hz,En,pl,cam,state,msg,wait,deaths=0;
+let P,Hz,En,pl,cam,state,msg,wait,deaths=0,tm=0,go=0,tot=0,best=null;
+try{best=parseFloat(localStorage.getItem('ornitoBest'))||null}catch(e){}
+function fmt(f){const s=f/60,m=Math.floor(s/60);return m?m+':'+(s%60).toFixed(1).padStart(4,'0'):s.toFixed(1)+'s'}
 function hit(a,b){return a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y}
 function init(){
  P=[[0,300,400,60,'g'],[400,300,60,60,'fall'],[460,300,300,60,'g'],[860,300,440,60,'g'],[1330,262,56,12,'fake'],[1400,300,950,60,'g'],[1600,240,40,60,'g'],[600,212,32,32,'hid']]
@@ -43,12 +45,12 @@ function init(){
  Hz=[{x:590,y:284,w:40,h:16,t:'s',sh:1},{x:940,y:284,w:48,h:16,t:'pop',sh:0,trig:34},{x:1700,y:-30,w:36,h:30,t:'drop',sh:1,trig:38,f:0}];
  En=[{x:1000,y:272,w:26,h:28,vx:-.8,a:880,b:1270,bad:0},{x:1150,y:272,w:26,h:28,vx:-.8,a:880,b:1270,bad:1},{x:2000,y:272,w:26,h:28,vx:-.9,a:1900,b:2200,bad:1}];
  pl={x:40,y:270,w:22,h:26,vx:0,vy:0,g:0,f:1};
- cam=0;state='play';msg='';wait=0;
+ cam=0;state='play';msg='';wait=0;tm=0;go=0;
 }
-function die(m){if(state!='play')return;state='dead';deaths++;msg=m;wait=40}
+function die(m){if(state!='play')return;state='dead';deaths++;tot+=tm;msg=m;wait=40}
 function step(){
- if(state!='play'){wait--;if(wait<0&&keys.j){init()}return}
- const p=pl;
+ if(state!='play'){wait--;if(wait<0&&keys.j){if(state=='win')tot=0;init()}return}
+ const p=pl;if(!go&&(keys.l||keys.r||keys.j))go=1;if(go)tm++;
  p.vx=(keys.r-keys.l)*3;if(p.vx)p.f=p.vx>0?1:-1;
  if(keys.j&&p.g){p.vy=-10;p.g=0}
  p.vy=Math.min(p.vy+.5,12);
@@ -74,7 +76,7 @@ function step(){
    if(p.vy>0&&p.y+p.h-e.y<16){if(e.bad)die("Aquele inimigo não era pisável!");else{e.dead=1;p.vy=-7}}
    else die("Um bichinho fofo te pegou.")}}
  if(p.x+p.w>1840&&p.x<1870&&p.y>190)die("Era uma bandeira falsa!");
- if(p.x+p.w>2280){state='win';msg="Você venceu!";wait=40}
+ if(p.x+p.w>2280){state='win';tot+=tm;const rec=!best||tm<best;if(rec){best=tm;try{localStorage.setItem('ornitoBest',best)}catch(e){}}msg=rec?"Você venceu! Novo recorde!":"Você venceu!";wait=40}
  if(p.y>H+40)die("Você caiu no buraco. Ele estava lá o tempo todo.");
  cam=Math.max(0,Math.min(LW-W,p.x-220));
 }
@@ -106,10 +108,11 @@ function draw(){
   x.fillStyle='#fff';x.fillRect(e.x+6-cam,e.y+8,5,5);x.fillRect(e.x+16-cam,e.y+8,5,5);x.fillStyle='#000';x.fillRect(e.x+8-cam,e.y+10,2,3);x.fillRect(e.x+18-cam,e.y+10,2,3);x.fillRect(e.x+5-cam,e.y+5,8,2);x.fillRect(e.x+15-cam,e.y+5,8,2);x.fillStyle='#5a3410';x.fillRect(e.x+2-cam,e.y+25,9,4);x.fillRect(e.x+15-cam,e.y+25,9,4)}
  platypus(pl);
  x.fillStyle='#000a';x.beginPath();x.roundRect(8,8,76,26,10);x.fill();x.fillStyle='#fff';x.font='14px system-ui';x.fillText('💀 '+deaths,18,26);
+ x.fillStyle='#000a';x.beginPath();x.roundRect(W/2-52,8,104,26,10);x.fill();x.fillStyle='#fff';x.textAlign='center';x.font='bold 15px system-ui';x.fillText('⏱ '+fmt(tm),W/2,26);x.textAlign='left';x.font='14px system-ui';
  x.fillStyle='#0005';x.fillRect(W-170,16,152,8);x.fillStyle='#ffd23f';x.fillRect(W-169,17,150*Math.min(1,pl.x/2280),6);
  if(state!='play'){x.fillStyle='#000c';x.beginPath();x.roundRect(120,120,400,110,16);x.fill();x.strokeStyle='#ffd23f';x.lineWidth=2;x.stroke();x.fillStyle='#fff';x.textAlign='center';
   x.font='bold 18px system-ui';x.fillText(msg,320,160,380);x.font='14px system-ui';
-  x.fillText(state=='win'?'Mortes: '+deaths+' · Toque em PULAR para jogar de novo':'Toque em PULAR para tentar de novo',320,196,380);x.textAlign='left'}
+  const ls=state=='win'?['Tempo: '+fmt(tm)+' · Total com mortes: '+fmt(tot),'Melhor: '+fmt(best)+' · Mortes: '+deaths,'Toque em PULAR para jogar de novo']:['Tempo nesta tentativa: '+fmt(tm),'Toque em PULAR para tentar de novo'];ls.forEach((t,i)=>x.fillText(t,320,184+i*20,380));x.textAlign='left'}
 }
 let last=0,acc=0,fr=0;
 function loop(t){acc+=Math.min(t-last,100);last=t;while(acc>=1000/60){step();acc-=1000/60}fr++;draw();requestAnimationFrame(loop)}
